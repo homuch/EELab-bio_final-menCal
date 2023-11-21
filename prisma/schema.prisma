@@ -1,0 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Mental_Arith_Record {
+  id           String                       @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  type  String
+  count Int
+  timeLimit  Int
+  Records      Json[]
+}
+
+model Mental_Arith_Single_Record {
+  id                    String               @id @default(auto()) @map("_id") @db.ObjectId
+  problemId             String
+  correct               Boolean
+  endAt                 Float
+  // Mental_Arith_Record   Mental_Arith_Record? @relation(fields: [mental_Arith_RecordId], references: [id])
+  mental_Arith_RecordId String?              @db.ObjectId
+}

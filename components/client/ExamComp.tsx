@@ -2,9 +2,17 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-
+import useReactTimer from "@/utils/useReactTimer";
 import generateProblem from "@/utils/generateProblem";
+import { prisma } from "@/db";
+import { Prisma } from "@prisma/client";
 import Link from "next/link";
+
+type problemRecord = {
+  problemId: string;
+  correct: boolean;
+  endAt: number;
+};
 
 const ExamComp = () => {
   const searchParams = useSearchParams();
@@ -13,37 +21,115 @@ const ExamComp = () => {
 
   const count = +(searchParams.get("count") || "10");
   const time = +(searchParams.get("time") || "0") || -1;
+  const expName = searchParams.get("expName") || "unknown";
 
   const [problems, setProblems] = useState(generateProblem(type, count + 1));
+  const [problemRecord, setProblemRecord] = useState<problemRecord[]>([]);
 
   const [result, setResult] = useState<(number | "")[]>([]);
   const [value, setValue] = useState<number | "">(0);
   const [gameStage, setGameStage] = useState<number>(0);
-  const [timeLeft, setTimeLeft] = useState<number>(time);
-
+  // const [timeLeft, setTimeLeft] = useState<number>(time);
+  const {
+    time: totalTimerTime,
+    startTimer: startTotalTimer,
+    pauseTimer,
+  } = useReactTimer(50);
+  const [lastTimePoint, setLastTimePoint] = useState(0);
   const isExample = gameStage === 0;
   const noLimit = time < 0;
   const gameEnd = gameStage > count;
 
+  const csvData = [
+    ["name", "type", "count", "timeLimit"].join(", "),
+    [
+      expName,
+      type === 1
+        ? "隨機二位數加法"
+        : type === 2
+        ? "隨機二位數加減法"
+        : "隨機二位數乘法",
+      count,
+      time,
+    ].join(", "),
+    "",
+    "problemId, correct, timeEndAt",
+    ...problemRecord.map(
+      (e) => e.problemId + ", " + e.correct + ", " + e.endAt
+    ),
+  ].join("\r\n");
+  const csvURL = `data:text/csv;charset=utf-8,%EF%BB%BF'${encodeURIComponent(
+    csvData
+  )}`;
+  const csvFileName = `${expName}-${
+    type === 1 ? "加法" : type === 2 ? "加減法" : "乘法"
+  }-${count}題-${time < 0 ? "不限時" : `${time}秒`}.csv`;
+
   const nextStage = useCallback(() => {
+    setProblemRecord((problemRecord) => [
+      ...problemRecord,
+      {
+        problemId: gameStage === 0 ? `Example` : gameStage.toString(),
+        correct: value === problems[gameStage].answer,
+        endAt: +totalTimerTime.toPrecision(4),
+      },
+    ]);
+    const newProblemRecord = [
+      ...problemRecord,
+      {
+        problemId: gameStage === 0 ? `Example` : gameStage.toString(),
+        correct: value === problems[gameStage].answer,
+        endAt: +totalTimerTime.toPrecision(4),
+      },
+    ];
+    if (gameStage === count) {
+      pauseTimer();
+      fetch("/api/saveMenArithData", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: expName,
+          type:
+            type === 1
+              ? "隨機二位數加法"
+              : type === 2
+              ? "隨機二位數加減法"
+              : "隨機二位數乘法",
+          count: count,
+          timeLimit: time,
+          Records: newProblemRecord,
+        }),
+      });
+    }
     setResult((result) => [...result, value]);
     setValue("");
     setGameStage(gameStage + 1);
-    setTimeLeft(time);
-  }, [gameStage, value, time]);
+    setLastTimePoint(totalTimerTime);
+  }, [
+    gameStage,
+    value,
+    problems,
+    totalTimerTime,
+    pauseTimer,
+    count,
+    problemRecord,
+    time,
+    type,
+    expName,
+  ]);
+
+  const startAllTimer = () => {
+    startTotalTimer();
+  };
 
   useEffect(() => {
     if (noLimit || gameEnd) return;
-    if (timeLeft === 0) {
+    if (totalTimerTime - lastTimePoint >= time) {
       nextStage();
     }
-    const timer = setTimeout(() => {
-      setTimeLeft((timeLeft) => timeLeft - 1);
-    }, 1000);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [noLimit, timeLeft, nextStage, gameEnd]);
+  }, [noLimit, nextStage, gameEnd, time, totalTimerTime, lastTimePoint]);
 
   useEffect(() => {
     ref.current?.focus();
@@ -75,6 +161,13 @@ const ExamComp = () => {
           >
             重新選擇測驗
           </Link>
+          <a
+            href={csvURL}
+            download={csvFileName}
+            className="text-white hover:underline m-2"
+          >
+            下載實驗數據
+          </a>
           <details defaultChecked={false}>
             <summary>詳細結果</summary>
             <ol>
@@ -94,8 +187,12 @@ const ExamComp = () => {
       ) : (
         <div className="flex flex-col items-center justify-start">
           <div>
-            <h2>{noLimit ? `不限時` : `剩 ${timeLeft} 秒`}</h2>
-            <h2>第 {gameStage} 題</h2>
+            <h2>
+              {noLimit
+                ? `不限時`
+                : `剩 ${Math.ceil(time - (totalTimerTime - lastTimePoint))} 秒`}
+            </h2>
+            <h2>{isExample ? "範例" : `第 ${gameStage} 題`}</h2>
           </div>
 
           <h2 className="mt-24 text-9xl">
@@ -113,10 +210,22 @@ const ExamComp = () => {
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
+                if (isExample) startAllTimer();
                 nextStage();
               }
             }}
           />
+          {isExample && (
+            <button
+              className="text-white rounded-md border-2 border-white my-4 p-2 hover:bg-slate-300 hover:text-black"
+              onClick={() => {
+                startAllTimer();
+                nextStage();
+              }}
+            >
+              我了解了，開始作答(測試)
+            </button>
+          )}
         </div>
       )}
     </div>
