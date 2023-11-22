@@ -206,7 +206,11 @@ const ExamComp = () => {
             ref={ref}
             value={value}
             onChange={(e) => {
-              setValue(+e.target.value);
+              setValue(
+                e.target.value === ""
+                  ? e.target.value
+                  : parseInt(e.target.value)
+              );
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
