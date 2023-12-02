@@ -57,7 +57,7 @@ const ExamComp = () => {
       time,
     ].join(", "),
     "",
-    "problemId, correct, timeEndAt, a, b, op, answer",
+    "problemId, correct, timeEndAt, a, op, b,  answer",
     ...problemRecord.map(
       (e) =>
         e.problemId +
