@@ -78,9 +78,7 @@ const ExamComp = () => {
   const csvURL = `data:text/csv;charset=utf-8,%EF%BB%BF'${encodeURIComponent(
     csvData
   )}`;
-  const csvFileName = `${expName}-${
-    type === 1 ? "加法" : type === 2 ? "加減法" : "乘法"
-  }-${count}題-${time < 0 ? "不限時" : `${time}秒`}.csv`;
+  const csvFileName = `l${type}_${time < 0 ? "0" : `${time}`}s_${count}.csv`;
 
   const nextStage = useCallback(() => {
     setProblemRecord((problemRecord) => [
