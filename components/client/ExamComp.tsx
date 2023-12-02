@@ -12,6 +12,10 @@ type problemRecord = {
   problemId: string;
   correct: boolean;
   endAt: number;
+  a: number;
+  b: number;
+  op: string;
+  answer: number;
 };
 
 const ExamComp = () => {
@@ -53,9 +57,22 @@ const ExamComp = () => {
       time,
     ].join(", "),
     "",
-    "problemId, correct, timeEndAt",
+    "problemId, correct, timeEndAt, a, b, op, answer",
     ...problemRecord.map(
-      (e) => e.problemId + ", " + e.correct + ", " + e.endAt
+      (e) =>
+        e.problemId +
+        ", " +
+        e.correct +
+        ", " +
+        e.endAt +
+        ", " +
+        e.a +
+        ", " +
+        e.b +
+        ", " +
+        e.op +
+        ", " +
+        e.answer
     ),
   ].join("\r\n");
   const csvURL = `data:text/csv;charset=utf-8,%EF%BB%BF'${encodeURIComponent(
@@ -72,6 +89,10 @@ const ExamComp = () => {
         problemId: gameStage === 0 ? `Example` : gameStage.toString(),
         correct: value === problems[gameStage].answer,
         endAt: +totalTimerTime.toPrecision(4),
+        a: problems[gameStage].a,
+        b: problems[gameStage].b,
+        op: problems[gameStage].op,
+        answer: problems[gameStage].answer,
       },
     ]);
     const newProblemRecord = [
@@ -80,6 +101,10 @@ const ExamComp = () => {
         problemId: gameStage === 0 ? `Example` : gameStage.toString(),
         correct: value === problems[gameStage].answer,
         endAt: +totalTimerTime.toPrecision(4),
+        a: problems[gameStage].a,
+        b: problems[gameStage].b,
+        op: problems[gameStage].op,
+        answer: problems[gameStage].answer,
       },
     ];
     if (gameStage === count) {
