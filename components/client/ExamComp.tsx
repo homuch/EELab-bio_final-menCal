@@ -68,9 +68,9 @@ const ExamComp = () => {
         ", " +
         e.a +
         ", " +
-        e.b +
-        ", " +
         e.op +
+        ", " +
+        e.b +
         ", " +
         e.answer
     ),
